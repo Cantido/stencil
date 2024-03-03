@@ -3,16 +3,9 @@ defmodule Stencil do
   Documentation for `Stencil`.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Stencil.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  def fragment({fragment_name, _meta, [args]}) do
+    quote do
+      if(var!(fragment) == unquote(fragment_name), unquote(args))
+    end
   end
 end
