@@ -4,7 +4,10 @@ defmodule Stencil.Engine do
   require Stencil
 
   @impl true
-  defdelegate init(opts), to: EEx.Engine
+  def init(opts) do
+    EEx.SmartEngine.init(opts)
+    |> EEx.SmartEngine.handle_expr("", quote(do: inside_fragment = nil))
+  end
 
   @impl true
   defdelegate handle_body(state), to: EEx.Engine
@@ -16,11 +19,28 @@ defmodule Stencil.Engine do
   defdelegate handle_end(state), to: EEx.SmartEngine
 
   @impl true
-  defdelegate handle_text(state, meta, text), to: EEx.SmartEngine
+  def handle_text(state, _meta, text) do
+    ast =
+      quote do
+        if var!(fragment) == inside_fragment do
+          unquote(text)
+        end
+      end
+
+    EEx.SmartEngine.handle_expr(state, "=", ast)
+  end
 
   @impl true
-  def handle_expr(state, "|", expr) do
-    EEx.SmartEngine.handle_expr(state, "=", Stencil.fragment(expr))
+  def handle_expr(state, "|", {fragment_name, _meta, [[do: args]]}) do
+    ast =
+      quote do
+        if var!(fragment) == unquote(fragment_name) do
+          inside_fragment = unquote(fragment_name)
+          unquote(args)
+        end
+      end
+
+    EEx.SmartEngine.handle_expr(state, "=", ast)
   end
 
   @impl true
